@@ -60,38 +60,44 @@ CMAKE_FLAGS=(
     "-DLLVM_ENABLE_WARNINGS=OFF"
 )
 
-if [[ "$OS" == "Linux" ]]; then
-    echo "=== Configuring for Linux ==="
-    CMAKE_FLAGS+=(
-        "-DLLVM_BUILD_LLVM_DYLIB=ON"
-        "-DLLVM_LINK_LLVM_DYLIB=ON"
-        "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON"
-        '-DCMAKE_INSTALL_RPATH=$ORIGIN'
-    )
-    LIB_EXT="so"
-    EXE_EXT=""
-
-elif [[ "$OS" == "Darwin" ]]; then
-    echo "=== Configuring for macOS ==="
-    CMAKE_FLAGS+=(
-        "-DLLVM_BUILD_LLVM_DYLIB=ON"
-        "-DLLVM_LINK_LLVM_DYLIB=ON"
-        "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON"
-        "-DCMAKE_INSTALL_RPATH=@executable_path"
-    )
-    LIB_EXT="dylib"
-    EXE_EXT=""
-
-elif [[ "$OS" == *"MINGW"* ]] || [[ "$OS" == *"MSYS"* ]] || [[ "$OS" == *"CYGWIN"* ]]; then
-    echo "=== Configuring for Windows ==="
-    # MSVC static fallback. No RPATH needed.
-    CMAKE_FLAGS+=()
-    LIB_EXT="dll"
-    EXE_EXT=".exe"
-else
-    echo "Unsupported OS: $OS"
-    exit 1
-fi
+case "$OS" in
+    Windows|*MINGW*|*MSYS*|*CYGWIN*)
+        echo "=== Configuring for Windows ==="
+        # MSVC static fallback. No RPATH needed.
+        CMAKE_FLAGS+=()
+        LIB_EXT="dll"
+        EXE_EXT=".exe"
+        LLD_BINS=(ld.lld)
+        ;;
+    Linux)
+        echo "=== Configuring for Linux ==="
+        CMAKE_FLAGS+=(
+            "-DLLVM_BUILD_LLVM_DYLIB=ON"
+            "-DLLVM_LINK_LLVM_DYLIB=ON"
+            "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON"
+            '-DCMAKE_INSTALL_RPATH=$ORIGIN'
+        )
+        LIB_EXT="so"
+        EXE_EXT=""
+        LLD_BINS=(lld ld.lld)
+        ;;
+    Darwin)
+        echo "=== Configuring for macOS ==="
+        CMAKE_FLAGS+=(
+            "-DLLVM_BUILD_LLVM_DYLIB=ON"
+            "-DLLVM_LINK_LLVM_DYLIB=ON"
+            "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON"
+            "-DCMAKE_INSTALL_RPATH=@executable_path"
+        )
+        LIB_EXT="dylib"
+        EXE_EXT=""
+        LLD_BINS=(lld ld64.lld)
+        ;;
+    *)
+        echo "Unsupported OS: $OS"
+        exit 1
+        ;;
+esac
 
 # Build tools
 echo "=== Running CMake ==="
@@ -103,7 +109,10 @@ ninja llc llvm-as lld
 echo "=== Extracting tools to $TOOLS_DIR ==="
 cp -P bin/llc${EXE_EXT} "$TOOLS_DIR/"
 cp -P bin/llvm-as${EXE_EXT} "$TOOLS_DIR/"
-cp -P bin/ld.lld${EXE_EXT} bin/lld-link${EXE_EXT} bin/ld64.lld${EXE_EXT} bin/lld${EXE_EXT} "$TOOLS_DIR/"
+
+for bin in "${LLD_BINS[@]}"; do
+    cp -P "bin/${bin}${EXE_EXT}" "$TOOLS_DIR/"
+done
 
 # Copy the dynamic library (Linux and macOS only)
 if [[ "$OS" == "Linux" || "$OS" == "Darwin" ]]; then
