@@ -9,5 +9,5 @@ This repository builds a minimal set of LLVM tools required by the [Fireball](ht
 
 ## Tools
 - llc
+- llvm-as
 - lld
-- opt
