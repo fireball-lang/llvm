@@ -1,0 +1,81 @@
+name: Build and Release LLVM Tools
+
+on:
+  workflow_dispatch:
+    inputs:
+      llvm_version:
+        description: 'LLVM Version'
+        required: true
+
+env:
+  LLVM_VERSION: ${{ github.event.inputs.llvm_version }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Windows MSVC Environment
+        if: runner.os == 'Windows'
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: "x64"
+
+      - name: Install Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja
+
+      - name: Install Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build cmake
+
+      - name: Install Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja cmake
+
+      - name: Run Build Script
+        shell: bash
+        run: bash build.sh
+
+      - name: Compress Artifacts
+        id: compress
+        shell: bash
+        run: bash compress.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.compress.outputs.archive_name }}
+          path: ${{ steps.compress.outputs.archive_name }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.LLVM_VERSION }}"
+          name: "${{ env.LLVM_VERSION }}"
+          files: artifacts/*
+          make_latest: true
