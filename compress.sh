@@ -27,16 +27,44 @@ else
   EXT="tar.gz"
 fi
 
-# Formulate File Name
-ARCHIVE_NAME="llvm-tools-${LLVM_VERSION}-${OS_NAME}-${ARCH}.${EXT}"
+# Formulate File Names
+TOOLS_ARCHIVE="llvm-tools-${LLVM_VERSION}-${OS_NAME}-${ARCH}.${EXT}"
+RUNTIME_ARCHIVE="llvm-runtime-${LLVM_VERSION}-${OS_NAME}-${ARCH}.${EXT}"
+
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
+  echo "tools_archive_name=${TOOLS_ARCHIVE}" >> "$GITHUB_OUTPUT"
+  echo "runtime_archive_name=${RUNTIME_ARCHIVE}" >> "$GITHUB_OUTPUT"
 fi
 
 # Compress the tools directory
-cd tools
-if [[ "$OS_NAME" == "windows" ]]; then
-  7z a "../${ARCHIVE_NAME}" ./*
+echo "=== Compressing Tools ==="
+if [ -d "tools" ]; then
+  cd tools
+  if [[ "$OS_NAME" == "windows" ]]; then
+    7z a "../${TOOLS_ARCHIVE}" ./*
+  else
+    tar -czvf "../${TOOLS_ARCHIVE}" ./*
+  fi
+  cd ..
 else
-  tar -czvf "../${ARCHIVE_NAME}" ./*
+  echo "Error: tools directory not found!"
+  exit 1
 fi
+
+# Compress the runtime directory
+echo "=== Compressing Runtime ==="
+if [ -d "runtime" ]; then
+  cd runtime
+  if [[ "$OS_NAME" == "windows" ]]; then
+    7z a "../${RUNTIME_ARCHIVE}" ./*
+  else
+    tar -czvf "../${RUNTIME_ARCHIVE}" ./*
+  fi
+  cd ..
+else
+  echo "Error: runtime directory not found!"
+  exit 1
+fi
+
+echo "=== Compression Complete ==="
+ls -lh "$TOOLS_ARCHIVE" "$RUNTIME_ARCHIVE"

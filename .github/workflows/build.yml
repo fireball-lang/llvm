@@ -1,4 +1,4 @@
-name: Build and Release LLVM Tools
+name: Build and Release LLVM Tools & Runtime
 
 on:
   workflow_dispatch:
@@ -23,11 +23,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Windows MSVC Environment
+      - name: Setup Windows MinGW Environment
         if: runner.os == 'Windows'
-        uses: TheMrMilchmann/setup-msvc-dev@v4
+        uses: egor-tensin/setup-mingw@v3
         with:
-          arch: "x64"
+          platform: x64
 
       - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
@@ -41,9 +41,23 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja cmake
 
-      - name: Run Build Script
+      - name: Build tools
         shell: bash
-        run: bash build.sh
+        run: |
+            if [ "$RUNNER_OS" == "Windows" ]; then
+              export CC=gcc
+              export CXX=g++
+            fi
+            bash build-tools.sh
+
+      - name: Build runtime
+        shell: bash
+        run: |
+            if [ "$RUNNER_OS" == "Windows" ]; then
+              export CC=gcc
+              export CXX=g++
+            fi
+            bash build-runtime.sh
 
       - name: Compress Artifacts
         id: compress
@@ -53,8 +67,10 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.compress.outputs.archive_name }}
-          path: ${{ steps.compress.outputs.archive_name }}
+          name: ${{ matrix.os }}
+          path: |
+              ${{ steps.compress.outputs.tools_archive_name }}
+              ${{ steps.compress.outputs.runtime_archive_name }}
           if-no-files-found: error
           retention-days: 1
 
