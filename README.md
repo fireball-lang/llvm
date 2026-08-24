@@ -1,6 +1,6 @@
 # Fireball LLVM build
 
-This repository builds a minimal set of LLVM tools required by the [Fireball](https://github.com/firball-lang/fireball) compiler.
+This repository builds a minimal set of LLVM tools and runtime libraries required by the [Fireball](https://github.com/firball-lang/fireball) compiler.
 
 ## Platforms
 - Windows (x64)
@@ -11,3 +11,7 @@ This repository builds a minimal set of LLVM tools required by the [Fireball](ht
 - llc
 - llvm-as
 - lld
+
+## Runtime
+- compiler-rt
+- libunwind
