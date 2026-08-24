@@ -68,11 +68,15 @@ CMAKE_FLAGS=(
     # Restrict compiler-rt to ONLY the target architecture (safely disables i386)
     "-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON"
 
+    # Aggressively strip down compiler-rt to JUST builtins
     "-DCOMPILER_RT_BUILD_BUILTINS=ON"
     "-DCOMPILER_RT_BUILD_SANITIZERS=OFF"
     "-DCOMPILER_RT_BUILD_XRAY=OFF"
     "-DCOMPILER_RT_BUILD_LIBFUZZER=OFF"
     "-DCOMPILER_RT_BUILD_PROFILE=OFF"
+    "-DCOMPILER_RT_BUILD_MEMPROF=OFF"
+    "-DCOMPILER_RT_BUILD_ORC=OFF"
+    "-DCOMPILER_RT_BUILD_GWP_ASAN=OFF"
     "-DCOMPILER_RT_INCLUDE_TESTS=OFF"
 
     "-DLIBUNWIND_ENABLE_SHARED=OFF"
@@ -82,7 +86,15 @@ CMAKE_FLAGS=(
 
 if [[ "$OS" == "Darwin" ]]; then
     echo "=== Configuring for macOS ==="
-    CMAKE_FLAGS+=("-DCMAKE_OSX_ARCHITECTURES=$ARCH_PREFIX")
+    CMAKE_FLAGS+=(
+        "-DCMAKE_OSX_ARCHITECTURES=$ARCH_PREFIX"
+        # Disable all alternative Apple platforms
+        "-DCOMPILER_RT_ENABLE_IOS=OFF"
+        "-DCOMPILER_RT_ENABLE_WATCHOS=OFF"
+        "-DCOMPILER_RT_ENABLE_TVOS=OFF"
+        # Force macOS builds to ONLY build the detected architecture (e.g. arm64)
+        "-DDARWIN_osx_ARCHS=$ARCH_PREFIX"
+    )
 elif [[ "$OS" == "Linux" ]]; then
     echo "=== Configuring for Linux ==="
 else
